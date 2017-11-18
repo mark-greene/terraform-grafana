@@ -1,0 +1,55 @@
+{
+  "_comment": "packer build -var 'aws_profile=default' -var 'aws_region=us-east-1' aws-grafana.json",
+
+  "variables": {
+    "aws_profile": "{{env `AWS_PROFILE`}}",
+    "aws_region": "{{env `AWS_REGION`}}",
+    "aws_ami_id": "",
+    "application": "terraform-grafana",
+    "environment": "dev",
+    "package_manager": "rpm -U"
+  },
+  "builders": [{
+    "type": "amazon-ebs",
+    "profile": "{{user `aws_profile`}}",
+    "region": "{{user `aws_region`}}",
+    "source_ami": "{{user `aws_ami_id`}}",
+    "instance_type": "t2.micro",
+    "ssh_username": "ec2-user",
+    "ami_name": "grafana-{{timestamp}}",
+    "ami_description": "Grafana server",
+    "tags": {
+      "Application": "{{user `application`}}",
+      "Environment": "{{user `environment`}}",
+      "Release": "Latest"
+    }
+  }],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "sleep 30 # https://stackoverflow.com/questions/29415198/always-sleep-on-packer-provisioning",
+        "sudo yum -y install https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana-4.6.1-1.x86_64.rpm",
+        "sudo chkconfig grafana-server on",
+        "sudo service grafana-server start",
+        "sudo yum -y install python36 python36-devel python36-pip python36-setuptools python36-virtualenv",
+        "sudo ln -s /usr/bin/pip-3.6 /usr/local/bin/pip3",
+        "sudo /usr/local/bin/pip3 install grafcli",
+        "mkdir .grafana"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "../configurations/grafana/",
+      "destination": ".grafana/"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo bash -c 'cat .grafana/awslogs.conf >> /etc/awslogs/awslogs.conf'",
+        "sudo service awslogs restart",
+        "mv .grafana/grafcli.conf .grafcli.conf"
+      ]
+    }
+  ]
+}

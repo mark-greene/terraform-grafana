@@ -1,0 +1,52 @@
+{
+  "_comment": "packer build -var 'aws_profile=default' -var 'aws_region=us-east-1' aws-linux.json",
+
+  "variables": {
+    "aws_profile": "{{env `AWS_PROFILE`}}",
+    "aws_region": "{{env `AWS_REGION`}}",
+    "aws_ami_id": "",
+    "application": "terraform-grafana",
+    "environment": "dev",
+    "package_manager": "rpm -U"
+  },
+  "builders": [{
+    "type": "amazon-ebs",
+    "profile": "{{user `aws_profile`}}",
+    "region": "{{user `aws_region`}}",
+    "source_ami": "{{user `aws_ami_id`}}",
+    "instance_type": "t2.micro",
+    "ssh_username": "ec2-user",
+    "ami_name": "amazon-linux-{{timestamp}}",
+    "ami_description": "Amazon Linux with cloudwatch logs",
+    "tags": {
+      "Application": "{{user `application`}}",
+      "Environment": "{{user `environment`}}",
+      "Release": "Latest"
+    }
+  }],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "sleep 30",
+        "sudo yum -y install wget"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "../configurations/{{user `aws_region`}}/",
+      "destination": "./"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo yum -y install awslogs",
+        "sudo service awslogs start",
+        "sudo chkconfig awslogs on",
+        "sudo bash -c 'cat awslogs.conf >> /etc/awslogs/awslogs.conf'",
+        "sudo bash -c 'yes | cp -f awscli.conf /etc/awslogs/awscli.conf'",
+        "sudo service awslogs restart"
+      ]
+    }
+  ]
+}

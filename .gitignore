@@ -1,0 +1,13 @@
+#  Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Sym Links (find . -type l | cut -c 2-)
+terraform/variables.tf
+state/variables.tf
+
+# Cache objects
+packer_cache/
